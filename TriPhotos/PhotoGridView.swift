@@ -10,6 +10,9 @@ final class PhotoGridViewModel: ObservableObject {
     private let sourceKind: PhotoSource.Kind
     private let service = PhotoLibraryService()
     private var modelContext: ModelContext?
+    private let pageSize = 120
+    private var nextOffset = 0
+    private var hasMore = true
 
     init(sourceKind: PhotoSource.Kind) {
         self.sourceKind = sourceKind
@@ -22,11 +25,20 @@ final class PhotoGridViewModel: ObservableObject {
     func load(referenceDate: Date? = nil, force: Bool = false) {
         guard !isLoading else { return }
         guard force || assets.isEmpty else { return }
-        if force { assets = [] }
+        assets = []
+        nextOffset = 0
+        hasMore = true
+        loadMore(referenceDate: referenceDate)
+    }
+
+    func loadMore(referenceDate: Date? = nil) {
+        guard !isLoading, hasMore else { return }
         isLoading = true
         print("[Photos] Chargement de la grille: \(sourceKind.rawValue)")
         let service = service
         let selectedSource = sourceKind
+        let pageOffset = nextOffset
+        let pageSize = pageSize
         let excludedIdentifiers: Set<String> = {
             guard selectedSource == .untriaged, let context = modelContext else { return [] }
             let decisions = (try? context.fetch(FetchDescriptor<PhotoDecision>())) ?? []
@@ -34,13 +46,22 @@ final class PhotoGridViewModel: ObservableObject {
         }()
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            var fetched = service.fetchReferences(for: selectedSource, referenceDate: referenceDate)
+            let rawFetched = service.fetchReferences(
+                for: selectedSource,
+                referenceDate: referenceDate,
+                offset: pageOffset,
+                limit: pageSize
+            )
+            let reachedEnd = rawFetched.count < pageSize
+            var fetched = rawFetched
             if selectedSource == .untriaged {
                 fetched = fetched.filter { !excludedIdentifiers.contains($0.localIdentifier) }
             }
             DispatchQueue.main.async {
                 guard let self else { return }
-                self.assets = fetched
+                self.assets.append(contentsOf: fetched)
+                self.nextOffset = pageOffset + pageSize
+                self.hasMore = !reachedEnd
                 self.isLoading = false
                 print("[Photos] Grille chargée: \(fetched.count) éléments")
             }
@@ -105,6 +126,11 @@ struct PhotoGridView: View {
                         ForEach(viewModel.assets) { asset in
                             AssetThumbnailView(localIdentifier: asset.localIdentifier)
                                 .aspectRatio(1, contentMode: .fit)
+                                .onAppear {
+                                    if asset.id == viewModel.assets.last?.id {
+                                        viewModel.loadMore(referenceDate: sourceKind == .month ? selectedMonthDate : nil)
+                                    }
+                                }
                         }
                     }
                 }

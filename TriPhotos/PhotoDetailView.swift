@@ -6,6 +6,7 @@ import SwiftUI
 struct PhotoDetailView: View {
     let assetReference: PhotoAssetReference
     @Environment(\.dismiss) private var dismiss
+    @State private var fileSizeText = "Taille indisponible"
 
     var body: some View {
         NavigationStack {
@@ -29,7 +30,55 @@ struct PhotoDetailView: View {
                         .foregroundStyle(.white)
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                metadata
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(.black.opacity(0.72))
+            }
+            .task {
+                fileSizeText = loadFileSize()
+            }
         }
+    }
+
+    private var metadata: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(assetReference.creationDate?.formatted(date: .abbreviated, time: .shortened) ?? "Date inconnue")
+                Spacer()
+                if assetReference.mediaType == .video {
+                    Text(formatDuration(assetReference.duration))
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.white)
+            Text("\(assetReference.pixelWidth) × \(assetReference.pixelHeight) px  ·  \(fileSizeText)")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.72))
+        }
+    }
+
+    private func loadFileSize() -> String {
+        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [assetReference.localIdentifier], options: nil).firstObject,
+              let resource = PHAssetResource.assetResources(for: asset).first,
+              let rawSize = resource.value(forKey: "fileSize") as? NSNumber else {
+            return "Taille indisponible"
+        }
+
+        let bytes = rawSize.int64Value
+        if bytes >= 1_000_000_000 {
+            return String(format: "%.1f Go", Double(bytes) / 1_000_000_000)
+        }
+        if bytes >= 1_000_000 {
+            return String(format: "%.1f Mo", Double(bytes) / 1_000_000)
+        }
+        return String(format: "%.0f Ko", Double(bytes) / 1_000)
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = max(Int(duration.rounded()), 0)
+        return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 }
 
@@ -66,7 +115,7 @@ private struct HighQualityAssetView: View {
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
         options.resizeMode = .none
-        options.isNetworkAccessAllowed = false
+        options.isNetworkAccessAllowed = true
         PHImageManager.default().requestImage(
             for: asset,
             targetSize: PHImageManagerMaximumSize,
@@ -94,7 +143,7 @@ private struct LivePhotoAssetView: UIViewRepresentable {
 
         let options = PHLivePhotoRequestOptions()
         options.deliveryMode = .highQualityFormat
-        options.isNetworkAccessAllowed = false
+        options.isNetworkAccessAllowed = true
         PHImageManager.default().requestLivePhoto(
             for: asset,
             targetSize: PHImageManagerMaximumSize,
@@ -131,7 +180,7 @@ private struct VideoAssetView: View {
         guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else { return }
         let options = PHVideoRequestOptions()
         options.deliveryMode = .automatic
-        options.isNetworkAccessAllowed = false
+        options.isNetworkAccessAllowed = true
         PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
             guard let avAsset else { return }
             DispatchQueue.main.async { player = AVPlayer(playerItem: AVPlayerItem(asset: avAsset)) }

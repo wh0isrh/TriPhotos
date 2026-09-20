@@ -6,6 +6,7 @@ import SwiftUI
 final class DeletionReviewViewModel: ObservableObject {
     @Published private(set) var identifiers: [String] = []
     @Published private(set) var selectedIdentifiers: Set<String> = []
+    @Published private(set) var selectedSizeText = "Espace estimé indisponible"
     @Published private(set) var isProcessing = false
     @Published var message: String?
 
@@ -24,6 +25,7 @@ final class DeletionReviewViewModel: ObservableObject {
             .filter { $0.actionRawValue == PhotoDecisionAction.deletePending.rawValue }
             .map(\.localIdentifier)
         selectedIdentifiers = Set(identifiers)
+        updateSelectedSize()
         print("[Suppression] File chargée: \(identifiers.count) photos")
     }
 
@@ -33,6 +35,7 @@ final class DeletionReviewViewModel: ObservableObject {
         } else {
             selectedIdentifiers.insert(identifier)
         }
+        updateSelectedSize()
     }
 
     func deleteSelected(simulation: Bool) {
@@ -83,6 +86,28 @@ final class DeletionReviewViewModel: ObservableObject {
         }
         try? context.save()
     }
+
+    private func updateSelectedSize() {
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: Array(selectedIdentifiers), options: nil)
+        var totalBytes: Int64 = 0
+        assets.enumerateObjects { asset, _, _ in
+            for resource in PHAssetResource.assetResources(for: asset) {
+                if let bytes = resource.value(forKey: "fileSize") as? NSNumber {
+                    totalBytes += bytes.int64Value
+                    break
+                }
+            }
+        }
+        guard totalBytes > 0 else {
+            selectedSizeText = "Espace estimé indisponible"
+            return
+        }
+        if totalBytes >= 1_000_000_000 {
+            selectedSizeText = String(format: "Espace estimé : %.1f Go", Double(totalBytes) / 1_000_000_000)
+        } else {
+            selectedSizeText = String(format: "Espace estimé : %.1f Mo", Double(totalBytes) / 1_000_000)
+        }
+    }
 }
 
 struct DeletionReviewView: View {
@@ -101,6 +126,10 @@ struct DeletionReviewView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
+                .padding(.bottom, 8)
+            Text(viewModel.selectedSizeText)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
                 .padding(.bottom, 8)
 
             if viewModel.identifiers.isEmpty {
@@ -159,4 +188,3 @@ struct DeletionReviewView: View {
         .task { viewModel.configure(context: modelContext) }
     }
 }
-

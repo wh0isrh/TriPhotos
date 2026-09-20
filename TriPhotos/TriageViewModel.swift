@@ -18,6 +18,10 @@ final class TriageViewModel: ObservableObject {
     private let service = PhotoLibraryService()
     private let albumService = PhotoAlbumService()
     private let imageManager = PHCachingImageManager()
+    private let pageSize = 60
+    private var nextOffset = 0
+    private var hasMore = true
+    private var didLoad = false
 
     var currentAsset: PhotoAssetReference? {
         guard assets.indices.contains(currentIndex) else { return nil }
@@ -37,20 +41,39 @@ final class TriageViewModel: ObservableObject {
     }
 
     func load() {
-        guard !isLoading, assets.isEmpty else { return }
+        guard !isLoading, !didLoad else { return }
+        didLoad = true
+        nextOffset = 0
+        hasMore = true
+        loadMore()
+    }
+
+    private func loadMore() {
+        guard !isLoading, hasMore else { return }
         isLoading = true
         let excludedIdentifiers = excludedIdentifiers()
         let selectedSource = sourceKind
         let selectedDate = referenceDate
         let service = service
+        let pageOffset = nextOffset
+        let pageSize = pageSize
         print("[Tri] Chargement des photos non triées: \(selectedSource.rawValue)")
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let fetched = service.fetchReferences(for: selectedSource, referenceDate: selectedDate)
+            let rawFetched = service.fetchReferences(
+                for: selectedSource,
+                referenceDate: selectedDate,
+                offset: pageOffset,
+                limit: pageSize
+            )
+            let reachedEnd = rawFetched.count < pageSize
+            let fetched = rawFetched
                 .filter { !excludedIdentifiers.contains($0.localIdentifier) }
             DispatchQueue.main.async {
                 guard let self else { return }
-                self.assets = fetched
+                self.assets.append(contentsOf: fetched)
+                self.nextOffset = pageOffset + pageSize
+                self.hasMore = !reachedEnd
                 self.isLoading = false
                 self.preheatNextAssets()
                 print("[Tri] Photos disponibles: \(fetched.count)")
@@ -119,6 +142,9 @@ final class TriageViewModel: ObservableObject {
             currentIndex += 1
             UIImpactFeedbackGenerator(style: action == .deletePending ? .medium : .light).impactOccurred()
             preheatNextAssets()
+            if currentIndex >= assets.count - 5 {
+                loadMore()
+            }
             print("[Tri] \(action.rawValue): \(asset.localIdentifier)")
         } catch {
             print("[Tri] Erreur de sauvegarde: \(error.localizedDescription)")

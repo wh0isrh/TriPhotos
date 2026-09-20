@@ -50,6 +50,9 @@ struct SwipeTriageView: View {
         HStack {
             Text("\(viewModel.remainingCount) restantes")
                 .font(.subheadline.weight(.semibold))
+            Text("· \(viewModel.currentIndex + 1) / \(viewModel.assets.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Spacer()
             Button {
                 viewModel.undo()

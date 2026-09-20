@@ -51,7 +51,9 @@ struct AssetThumbnailView: View {
         let options = PHImageRequestOptions()
         options.deliveryMode = .opportunistic
         options.resizeMode = .fast
-        options.isNetworkAccessAllowed = false
+        // Autorise uniquement PhotoKit à récupérer un original iCloud pour l’affichage.
+        // L’application ne fait aucune requête réseau elle-même.
+        options.isNetworkAccessAllowed = true
 
         requestID = PHCachingImageManager.default().requestImage(
             for: asset,

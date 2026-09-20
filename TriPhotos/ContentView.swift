@@ -6,6 +6,7 @@ import UIKit
 struct ContentView: View {
     @StateObject private var viewModel = HomeViewModel()
     @Environment(\.modelContext) private var modelContext
+    @State private var isResetConfirmationPresented = false
 
     var body: some View {
         NavigationStack {
@@ -75,9 +76,26 @@ struct ContentView: View {
                 } label: {
                     Label("File de suppression", systemImage: "trash")
                 }
+                Button {
+                    isResetConfirmationPresented = true
+                } label: {
+                    Label("Réinitialiser la progression", systemImage: "arrow.counterclockwise")
+                }
             }
         }
         .refreshable { viewModel.refreshSources() }
+        .confirmationDialog(
+            "Réinitialiser la progression ?",
+            isPresented: $isResetConfirmationPresented,
+            titleVisibility: .visible
+        ) {
+            Button("Réinitialiser", role: .destructive) {
+                viewModel.resetProgress()
+            }
+            Button("Annuler", role: .cancel) {}
+        } message: {
+            Text("Les photos ne seront pas supprimées. Elles pourront simplement réapparaître dans les sources à trier.")
+        }
     }
 
     private func permissionView(title: String, message: String, buttonTitle: String, action: @escaping () -> Void) -> some View {

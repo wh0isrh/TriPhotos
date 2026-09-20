@@ -84,7 +84,12 @@ final class PhotoLibraryService: @unchecked Sendable {
         ]
     }
 
-    func fetchReferences(for kind: PhotoSource.Kind, referenceDate: Date? = nil) -> [PhotoAssetReference] {
+    func fetchReferences(
+        for kind: PhotoSource.Kind,
+        referenceDate: Date? = nil,
+        offset: Int = 0,
+        limit: Int? = nil
+    ) -> [PhotoAssetReference] {
         let result: PHFetchResult<PHAsset>
         switch kind {
         case .all, .untriaged:
@@ -109,9 +114,13 @@ final class PhotoLibraryService: @unchecked Sendable {
         }
 
         var references: [PhotoAssetReference] = []
-        references.reserveCapacity(result.count)
-        result.enumerateObjects { asset, _, _ in
+        references.reserveCapacity(limit ?? result.count)
+        result.enumerateObjects { asset, index, stop in
+            guard index >= offset else { return }
             references.append(PhotoAssetReference(asset: asset))
+            if let limit, references.count >= limit {
+                stop.pointee = true
+            }
         }
         return references
     }

@@ -68,4 +68,17 @@ final class HomeViewModel: ObservableObject {
             }
         }
     }
+
+    func resetProgress() {
+        guard let context = modelContext else { return }
+        let decisions = (try? context.fetch(FetchDescriptor<PhotoDecision>())) ?? []
+        decisions.forEach { context.delete($0) }
+        do {
+            try context.save()
+            print("[Photos] Progression réinitialisée: \(decisions.count) décisions supprimées")
+            refreshSources()
+        } catch {
+            print("[Photos] Échec de réinitialisation: \(error.localizedDescription)")
+        }
+    }
 }
