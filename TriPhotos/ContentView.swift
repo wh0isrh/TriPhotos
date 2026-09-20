@@ -43,6 +43,12 @@ struct ContentView: View {
             }
 
             Section("À trier") {
+                if viewModel.authorization == .limited {
+                    Label("Accès limité : seules les photos autorisées par iOS sont visibles.", systemImage: "lock.rectangle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Gérer les photos autorisées") { openSettings() }
+                }
                 if viewModel.isLoading {
                     ProgressView("Comptage en cours…")
                 } else if viewModel.sources.isEmpty {

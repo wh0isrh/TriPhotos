@@ -1,5 +1,6 @@
 import AVKit
 import Photos
+import PhotosUI
 import SwiftUI
 
 struct PhotoDetailView: View {
@@ -11,6 +12,8 @@ struct PhotoDetailView: View {
             Group {
                 if assetReference.mediaType == .video {
                     VideoAssetView(localIdentifier: assetReference.localIdentifier)
+                } else if assetReference.isLivePhoto {
+                    LivePhotoAssetView(localIdentifier: assetReference.localIdentifier)
                 } else {
                     HighQualityAssetView(localIdentifier: assetReference.localIdentifier)
                 }
@@ -63,7 +66,7 @@ private struct HighQualityAssetView: View {
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
         options.resizeMode = .none
-        options.isNetworkAccessAllowed = true
+        options.isNetworkAccessAllowed = false
         PHImageManager.default().requestImage(
             for: asset,
             targetSize: PHImageManagerMaximumSize,
@@ -72,6 +75,37 @@ private struct HighQualityAssetView: View {
         ) { image, _ in
             guard let image else { return }
             DispatchQueue.main.async { self.image = image }
+        }
+    }
+}
+
+private struct LivePhotoAssetView: UIViewRepresentable {
+    let localIdentifier: String
+
+    func makeUIView(context: Context) -> PHLivePhotoView {
+        let view = PHLivePhotoView()
+        view.contentMode = .scaleAspectFit
+        return view
+    }
+
+    func updateUIView(_ view: PHLivePhotoView, context: Context) {
+        guard view.livePhoto == nil,
+              let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else { return }
+
+        let options = PHLivePhotoRequestOptions()
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = false
+        PHImageManager.default().requestLivePhoto(
+            for: asset,
+            targetSize: PHImageManagerMaximumSize,
+            contentMode: .aspectFit,
+            options: options
+        ) { livePhoto, _ in
+            guard let livePhoto else { return }
+            DispatchQueue.main.async {
+                view.livePhoto = livePhoto
+                view.startPlayback(with: .full)
+            }
         }
     }
 }
@@ -97,11 +131,10 @@ private struct VideoAssetView: View {
         guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else { return }
         let options = PHVideoRequestOptions()
         options.deliveryMode = .automatic
-        options.isNetworkAccessAllowed = true
+        options.isNetworkAccessAllowed = false
         PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
             guard let avAsset else { return }
             DispatchQueue.main.async { player = AVPlayer(playerItem: AVPlayerItem(asset: avAsset)) }
         }
     }
 }
-
