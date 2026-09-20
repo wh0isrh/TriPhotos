@@ -32,6 +32,19 @@ jobs:
           CODE_SIGNING_REQUIRED=NO
           SWIFT_VERSION=5.0
 
+      - name: Validate generated app metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          plist="build/DerivedData/Build/Products/Debug-iphoneos/TriPhotos.app/Info.plist"
+          test -f "$plist"
+          plutil -extract CFBundleIdentifier raw -o - "$plist" | grep -Fxq "com.moncompte.triphotos"
+          plutil -extract MinimumOSVersion raw -o - "$plist" | grep -Fxq "17.0"
+          plutil -p "$plist" | grep -Fq "UIInterfaceOrientationPortrait"
+          plutil -p "$plist" | grep -Fq "NSPhotoLibraryUsageDescription"
+          plutil -p "$plist" | grep -Fq "NSPhotoLibraryAddUsageDescription"
+          echo "Generated Info.plist checks passed."
+
       - name: Package IPA
         shell: bash
         run: |
