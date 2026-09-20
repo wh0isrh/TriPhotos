@@ -65,11 +65,11 @@ final class PhotoLibraryService {
     }
 
     func sources() -> [PhotoSource] {
-        let allCount = PHAsset.fetchAssets(with: nil, options: nil).count
+        let allCount = PHAsset.fetchAssets(with: .unknown, options: nil).count
         let videosCount = PHAsset.fetchAssets(with: .video, options: nil).count
         let favoritesOptions = PHFetchOptions()
         favoritesOptions.predicate = NSPredicate(format: "favorite == YES")
-        let favoritesCount = PHAsset.fetchAssets(with: nil, options: favoritesOptions).count
+        let favoritesCount = PHAsset.fetchAssets(with: .unknown, options: favoritesOptions).count
 
         return [
             PhotoSource(kind: .all, count: allCount),
@@ -92,6 +92,6 @@ final class PhotoLibraryService {
         let start = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
         let options = PHFetchOptions()
         options.predicate = NSPredicate(format: "creationDate >= %@", start as NSDate)
-        return PHAsset.fetchAssets(with: nil, options: options).count
+        return PHAsset.fetchAssets(with: .unknown, options: options).count
     }
 }
