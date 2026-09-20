@@ -66,22 +66,28 @@ final class PhotoLibraryService: @unchecked Sendable {
         }
     }
 
-    func sources() -> [PhotoSource] {
-        let allCount = PHAsset.fetchAssets(with: .unknown, options: nil).count
-        let videosCount = PHAsset.fetchAssets(with: .video, options: nil).count
-        let favoritesOptions = PHFetchOptions()
-        favoritesOptions.predicate = NSPredicate(format: "favorite == YES")
-        let favoritesCount = PHAsset.fetchAssets(with: .unknown, options: favoritesOptions).count
-
+    func sources(excluding excludedIdentifiers: Set<String> = []) -> [PhotoSource] {
         return [
-            PhotoSource(kind: .all, count: allCount),
-            PhotoSource(kind: .month, count: countForCurrentMonth()),
-            PhotoSource(kind: .screenshots, count: countForSmartAlbum(.smartAlbumScreenshots)),
-            PhotoSource(kind: .videos, count: videosCount),
-            PhotoSource(kind: .livePhotos, count: countForSmartAlbum(.smartAlbumLivePhotos)),
-            PhotoSource(kind: .favorites, count: favoritesCount),
-            PhotoSource(kind: .untriaged, count: allCount)
+            PhotoSource(kind: .all, count: count(for: .all, excluding: excludedIdentifiers)),
+            PhotoSource(kind: .month, count: count(for: .month, excluding: excludedIdentifiers)),
+            PhotoSource(kind: .screenshots, count: count(for: .screenshots, excluding: excludedIdentifiers)),
+            PhotoSource(kind: .videos, count: count(for: .videos, excluding: excludedIdentifiers)),
+            PhotoSource(kind: .livePhotos, count: count(for: .livePhotos, excluding: excludedIdentifiers)),
+            PhotoSource(kind: .favorites, count: count(for: .favorites, excluding: excludedIdentifiers)),
+            PhotoSource(kind: .untriaged, count: count(for: .all, excluding: excludedIdentifiers))
         ]
+    }
+
+    private func count(for kind: PhotoSource.Kind, referenceDate: Date? = nil, excluding excludedIdentifiers: Set<String>) -> Int {
+        let result = fetchResult(for: kind, referenceDate: referenceDate)
+        guard !excludedIdentifiers.isEmpty else { return result.count }
+        var remaining = 0
+        result.enumerateObjects { asset, _, _ in
+            if !excludedIdentifiers.contains(asset.localIdentifier) {
+                remaining += 1
+            }
+        }
+        return remaining
     }
 
     func fetchReferences(
@@ -90,29 +96,7 @@ final class PhotoLibraryService: @unchecked Sendable {
         offset: Int = 0,
         limit: Int? = nil
     ) -> [PhotoAssetReference] {
-        let result: PHFetchResult<PHAsset>
-        switch kind {
-        case .all, .untriaged:
-            result = PHAsset.fetchAssets(with: .unknown, options: nil)
-        case .videos:
-            result = PHAsset.fetchAssets(with: .video, options: nil)
-        case .favorites:
-            let options = PHFetchOptions()
-            options.predicate = NSPredicate(format: "favorite == YES")
-            result = PHAsset.fetchAssets(with: .unknown, options: options)
-        case .month:
-            let calendar = Calendar.current
-            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: referenceDate ?? Date())) ?? Date()
-            let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
-            let options = PHFetchOptions()
-            options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
-            result = PHAsset.fetchAssets(with: .unknown, options: options)
-        case .screenshots:
-            result = assetsInSmartAlbum(.smartAlbumScreenshots)
-        case .livePhotos:
-            result = assetsInSmartAlbum(.smartAlbumLivePhotos)
-        }
-
+        let result = fetchResult(for: kind, referenceDate: referenceDate)
         var references: [PhotoAssetReference] = []
         references.reserveCapacity(limit ?? result.count)
         result.enumerateObjects { asset, index, stop in
@@ -123,6 +107,30 @@ final class PhotoLibraryService: @unchecked Sendable {
             }
         }
         return references
+    }
+
+    private func fetchResult(for kind: PhotoSource.Kind, referenceDate: Date? = nil) -> PHFetchResult<PHAsset> {
+        switch kind {
+        case .all, .untriaged:
+            return PHAsset.fetchAssets(with: .unknown, options: nil)
+        case .videos:
+            return PHAsset.fetchAssets(with: .video, options: nil)
+        case .favorites:
+            let options = PHFetchOptions()
+            options.predicate = NSPredicate(format: "favorite == YES")
+            return PHAsset.fetchAssets(with: .unknown, options: options)
+        case .month:
+            let calendar = Calendar.current
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: referenceDate ?? Date())) ?? Date()
+            let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
+            let options = PHFetchOptions()
+            options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
+            return PHAsset.fetchAssets(with: .unknown, options: options)
+        case .screenshots:
+            return assetsInSmartAlbum(.smartAlbumScreenshots)
+        case .livePhotos:
+            return assetsInSmartAlbum(.smartAlbumLivePhotos)
+        }
     }
 
     private func countForSmartAlbum(_ subtype: PHAssetCollectionSubtype) -> Int {
@@ -139,11 +147,4 @@ final class PhotoLibraryService: @unchecked Sendable {
         return PHAsset.fetchAssets(in: collection, options: nil)
     }
 
-    private func countForCurrentMonth() -> Int {
-        let calendar = Calendar.current
-        let start = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "creationDate >= %@", start as NSDate)
-        return PHAsset.fetchAssets(with: .unknown, options: options).count
-    }
 }

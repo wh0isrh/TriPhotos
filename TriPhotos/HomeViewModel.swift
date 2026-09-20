@@ -54,12 +54,7 @@ final class HomeViewModel: ObservableObject {
             return Set(decisions.map(\.localIdentifier))
         }()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            var sources = service.sources()
-            let untriagedCount = max(service.fetchReferences(for: .all).count - excluded.count, 0)
-            sources = sources.map { source in
-                guard source.kind == .untriaged else { return source }
-                return PhotoSource(kind: .untriaged, count: untriagedCount)
-            }
+            let sources = service.sources(excluding: excluded)
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.sources = sources
