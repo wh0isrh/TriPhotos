@@ -20,7 +20,8 @@ struct AssetThumbnailView: View {
             if let image {
                 Image(uiImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: contentMode)
+                    .scaledToFillOrFit(contentMode)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if isUnavailable {
                 Image(systemName: "icloud.slash")
                     .font(.title2)
@@ -69,6 +70,17 @@ struct AssetThumbnailView: View {
             DispatchQueue.main.async {
                 self.image = image
             }
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func scaledToFillOrFit(_ contentMode: ContentMode) -> some View {
+        if contentMode == .fill {
+            scaledToFill()
+        } else {
+            scaledToFit()
         }
     }
 }

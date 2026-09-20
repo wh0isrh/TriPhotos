@@ -120,20 +120,22 @@ final class PhotoLibraryService: @unchecked Sendable {
     private func fetchResult(for kind: PhotoSource.Kind, referenceDate: Date? = nil) -> PHFetchResult<PHAsset> {
         switch kind {
         case .all, .untriaged:
-            return PHAsset.fetchAssets(with: .unknown, options: nil)
+            // `.unknown` means an unknown media type, not “tous les médias”.
+            // The nil media type fetch is the PhotoKit API for the complete library.
+            return PHAsset.fetchAssets(with: nil)
         case .videos:
             return PHAsset.fetchAssets(with: .video, options: nil)
         case .favorites:
             let options = PHFetchOptions()
             options.predicate = NSPredicate(format: "favorite == YES")
-            return PHAsset.fetchAssets(with: .unknown, options: options)
+            return PHAsset.fetchAssets(with: options)
         case .month:
             let calendar = Calendar.current
             let start = calendar.date(from: calendar.dateComponents([.year, .month], from: referenceDate ?? Date())) ?? Date()
             let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
             let options = PHFetchOptions()
             options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
-            return PHAsset.fetchAssets(with: .unknown, options: options)
+            return PHAsset.fetchAssets(with: options)
         case .screenshots:
             return assetsInSmartAlbum(.smartAlbumScreenshots)
         case .livePhotos:

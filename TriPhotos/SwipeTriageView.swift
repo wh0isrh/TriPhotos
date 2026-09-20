@@ -8,6 +8,7 @@ struct SwipeTriageView: View {
     @StateObject private var viewModel: TriageViewModel
     @State private var isAlbumPickerPresented = false
     @State private var detailAsset: PhotoAssetReference?
+    @State private var cardOffset: CGSize = .zero
 
     init(sourceKind: PhotoSource.Kind, referenceDate: Date? = nil) {
         self.sourceKind = sourceKind
@@ -71,15 +72,39 @@ struct SwipeTriageView: View {
             .onTapGesture {
                 detailAsset = asset
             }
-            .gesture(
+            .offset(cardOffset)
+            .rotationEffect(.degrees(Double(cardOffset.width / 24)))
+            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: cardOffset)
+            .highPriorityGesture(
                 DragGesture(minimumDistance: 30)
+                    .onChanged { value in
+                        cardOffset = value.translation
+                    }
                     .onEnded { value in
-                        if value.translation.width < -60 {
-                            viewModel.markCurrentForDeletion()
-                        } else if value.translation.width > 60 {
-                            viewModel.keepCurrent()
-                        } else if value.translation.height < -60 {
-                            isAlbumPickerPresented = true
+                        let horizontal = value.translation.width
+                        let vertical = value.translation.height
+                        let threshold: CGFloat = 70
+
+                        if abs(horizontal) >= abs(vertical), abs(horizontal) >= threshold {
+                            cardOffset = CGSize(width: horizontal > 0 ? 500 : -500, height: 0)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                                if horizontal < 0 {
+                                    viewModel.markCurrentForDeletion()
+                                } else {
+                                    viewModel.keepCurrent()
+                                }
+                                cardOffset = .zero
+                            }
+                        } else if abs(vertical) > abs(horizontal), abs(vertical) >= threshold {
+                            // Les deux directions verticales ouvrent le choix album/favori.
+                            // Cela rend le geste utilisable dans les deux sens avec une main.
+                            cardOffset = CGSize(width: 0, height: vertical > 0 ? 500 : -500)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                                isAlbumPickerPresented = true
+                                cardOffset = .zero
+                            }
+                        } else {
+                            cardOffset = .zero
                         }
                     }
             )
