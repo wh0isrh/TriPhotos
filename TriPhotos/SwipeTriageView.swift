@@ -50,7 +50,7 @@ struct SwipeTriageView: View {
         HStack {
             Text("\(viewModel.remainingCount) restantes")
                 .font(.subheadline.weight(.semibold))
-            Text("· \(viewModel.currentIndex + 1) / \(viewModel.assets.count)")
+            Text("· \(min(viewModel.currentIndex + 1, max(viewModel.totalCount, 1))) / \(max(viewModel.totalCount, 1))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -84,12 +84,15 @@ struct SwipeTriageView: View {
                     }
             )
             .overlay(alignment: .bottom) {
-                Text(asset.creationDate?.formatted(date: .abbreviated, time: .omitted) ?? "Date inconnue")
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.thinMaterial, in: Capsule())
-                    .padding()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(asset.creationDate?.formatted(date: .abbreviated, time: .omitted) ?? "Date inconnue")
+                    Text(asset.fileSizeText)
+                }
+                .font(.caption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.thinMaterial, in: Capsule())
+                .padding()
             }
     }
 

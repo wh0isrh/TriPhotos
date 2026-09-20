@@ -109,6 +109,14 @@ final class PhotoLibraryService: @unchecked Sendable {
         return references
     }
 
+    func remainingCount(
+        for kind: PhotoSource.Kind,
+        referenceDate: Date? = nil,
+        excluding excludedIdentifiers: Set<String>
+    ) -> Int {
+        count(for: kind, referenceDate: referenceDate, excluding: excludedIdentifiers)
+    }
+
     private func fetchResult(for kind: PhotoSource.Kind, referenceDate: Date? = nil) -> PHFetchResult<PHAsset> {
         switch kind {
         case .all, .untriaged:

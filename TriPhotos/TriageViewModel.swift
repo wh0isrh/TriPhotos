@@ -10,6 +10,7 @@ final class TriageViewModel: ObservableObject {
     @Published private(set) var currentIndex = 0
     @Published private(set) var isLoading = false
     @Published private(set) var lastAction: PhotoDecisionAction?
+    @Published private(set) var totalCount = 0
 
     private var modelContext: ModelContext?
     private var sourceKind: PhotoSource.Kind = .all
@@ -29,7 +30,7 @@ final class TriageViewModel: ObservableObject {
     }
 
     var remainingCount: Int {
-        max(assets.count - currentIndex, 0)
+        max(totalCount - currentIndex, 0)
     }
 
     func configure(context: ModelContext, sourceKind: PhotoSource.Kind, referenceDate: Date? = nil) {
@@ -57,9 +58,13 @@ final class TriageViewModel: ObservableObject {
         let service = service
         let pageOffset = nextOffset
         let pageSize = pageSize
+        let isFirstPage = pageOffset == 0
         print("[Tri] Chargement des photos non triées: \(selectedSource.rawValue)")
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let totalCount = isFirstPage
+                ? service.remainingCount(for: selectedSource, referenceDate: selectedDate, excluding: excludedIdentifiers)
+                : 0
             let rawFetched = service.fetchReferences(
                 for: selectedSource,
                 referenceDate: selectedDate,
@@ -71,6 +76,9 @@ final class TriageViewModel: ObservableObject {
                 .filter { !excludedIdentifiers.contains($0.localIdentifier) }
             DispatchQueue.main.async {
                 guard let self else { return }
+                if isFirstPage {
+                    self.totalCount = totalCount
+                }
                 self.assets.append(contentsOf: fetched)
                 self.nextOffset = pageOffset + pageSize
                 self.hasMore = !reachedEnd
