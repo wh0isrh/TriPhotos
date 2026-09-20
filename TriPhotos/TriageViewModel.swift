@@ -15,6 +15,7 @@ final class TriageViewModel: ObservableObject {
     private var modelContext: ModelContext?
     private var sourceKind: PhotoSource.Kind = .all
     private var referenceDate: Date?
+    private var sortOption: PhotoSortOption = .libraryOrder
     private var undoStack: [String] = []
     private let service = PhotoLibraryService()
     private let albumService = PhotoAlbumService()
@@ -23,6 +24,7 @@ final class TriageViewModel: ObservableObject {
     private var nextOffset = 0
     private var hasMore = true
     private var didLoad = false
+    private var sortedReferences: [PhotoAssetReference]?
 
     var currentAsset: PhotoAssetReference? {
         guard assets.indices.contains(currentIndex) else { return nil }
@@ -33,11 +35,17 @@ final class TriageViewModel: ObservableObject {
         max(totalCount - currentIndex, 0)
     }
 
-    func configure(context: ModelContext, sourceKind: PhotoSource.Kind, referenceDate: Date? = nil) {
+    func configure(
+        context: ModelContext,
+        sourceKind: PhotoSource.Kind,
+        referenceDate: Date? = nil,
+        sortOption: PhotoSortOption = .libraryOrder
+    ) {
         guard modelContext == nil else { return }
         modelContext = context
         self.sourceKind = sourceKind
         self.referenceDate = referenceDate
+        self.sortOption = sortOption
         load()
     }
 
@@ -46,6 +54,7 @@ final class TriageViewModel: ObservableObject {
         didLoad = true
         nextOffset = 0
         hasMore = true
+        sortedReferences = nil
         loadMore()
     }
 
@@ -59,18 +68,37 @@ final class TriageViewModel: ObservableObject {
         let pageOffset = nextOffset
         let pageSize = pageSize
         let isFirstPage = pageOffset == 0
+        let selectedSort = sortOption
+        let cachedSortedReferences = sortedReferences
         print("[Tri] Chargement des photos non triées: \(selectedSource.rawValue)")
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let totalCount = isFirstPage
+            var totalCount = isFirstPage
                 ? service.remainingCount(for: selectedSource, referenceDate: selectedDate, excluding: excludedIdentifiers)
                 : 0
-            let rawFetched = service.fetchReferences(
-                for: selectedSource,
-                referenceDate: selectedDate,
-                offset: pageOffset,
-                limit: pageSize
-            )
+            var sortedForCache: [PhotoAssetReference]?
+            let rawFetched: [PhotoAssetReference]
+            if selectedSort == .largestFirst {
+                let sorted = cachedSortedReferences ?? service.fetchReferences(
+                    for: selectedSource,
+                    referenceDate: selectedDate,
+                    sort: selectedSort
+                )
+                let filteredSorted = sorted.filter { !excludedIdentifiers.contains($0.localIdentifier) }
+                sortedForCache = cachedSortedReferences == nil ? filteredSorted : nil
+                if isFirstPage {
+                    totalCount = filteredSorted.count
+                }
+                rawFetched = Array(filteredSorted.dropFirst(pageOffset).prefix(pageSize))
+            } else {
+                sortedForCache = nil
+                rawFetched = service.fetchReferences(
+                    for: selectedSource,
+                    referenceDate: selectedDate,
+                    offset: pageOffset,
+                    limit: pageSize
+                )
+            }
             let reachedEnd = rawFetched.count < pageSize
             let fetched = rawFetched
                 .filter { !excludedIdentifiers.contains($0.localIdentifier) }
@@ -78,6 +106,9 @@ final class TriageViewModel: ObservableObject {
                 guard let self else { return }
                 if isFirstPage {
                     self.totalCount = totalCount
+                }
+                if let sortedForCache {
+                    self.sortedReferences = sortedForCache
                 }
                 self.assets.append(contentsOf: fetched)
                 self.nextOffset = pageOffset + pageSize

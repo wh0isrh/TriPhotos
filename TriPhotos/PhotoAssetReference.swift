@@ -8,17 +8,15 @@ struct PhotoAssetReference: Identifiable, Hashable {
     let pixelWidth: Int
     let pixelHeight: Int
     let duration: TimeInterval
+    let fileSizeBytes: Int64?
 
     var id: String { localIdentifier }
 
     var fileSizeText: String {
-        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject,
-              let resource = PHAssetResource.assetResources(for: asset).first,
-              let rawSize = resource.value(forKey: "fileSize") as? NSNumber else {
+        guard let bytes = fileSizeBytes, bytes > 0 else {
             return "Taille indisponible"
         }
 
-        let bytes = rawSize.int64Value
         if bytes >= 1_000_000_000 {
             return String(format: "%.1f Go", Double(bytes) / 1_000_000_000)
         }
@@ -36,5 +34,8 @@ struct PhotoAssetReference: Identifiable, Hashable {
         pixelWidth = asset.pixelWidth
         pixelHeight = asset.pixelHeight
         duration = asset.duration
+        fileSizeBytes = PHAssetResource.assetResources(for: asset)
+            .compactMap { ($0.value(forKey: "fileSize") as? NSNumber)?.int64Value }
+            .first(where: { $0 > 0 })
     }
 }

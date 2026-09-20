@@ -4,15 +4,21 @@ import SwiftData
 struct SwipeTriageView: View {
     let sourceKind: PhotoSource.Kind
     let referenceDate: Date?
+    let sortOption: PhotoSortOption
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: TriageViewModel
     @State private var isAlbumPickerPresented = false
     @State private var detailAsset: PhotoAssetReference?
     @State private var cardOffset: CGSize = .zero
 
-    init(sourceKind: PhotoSource.Kind, referenceDate: Date? = nil) {
+    init(
+        sourceKind: PhotoSource.Kind,
+        referenceDate: Date? = nil,
+        sortOption: PhotoSortOption = .libraryOrder
+    ) {
         self.sourceKind = sourceKind
         self.referenceDate = referenceDate
+        self.sortOption = sortOption
         _viewModel = StateObject(wrappedValue: TriageViewModel())
     }
 
@@ -34,7 +40,12 @@ struct SwipeTriageView: View {
         .navigationTitle("Tri")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            viewModel.configure(context: modelContext, sourceKind: sourceKind, referenceDate: referenceDate)
+            viewModel.configure(
+                context: modelContext,
+                sourceKind: sourceKind,
+                referenceDate: referenceDate,
+                sortOption: sortOption
+            )
         }
         .sheet(isPresented: $isAlbumPickerPresented) {
             AlbumPickerView(

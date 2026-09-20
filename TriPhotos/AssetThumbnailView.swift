@@ -8,6 +8,8 @@ struct AssetThumbnailView: View {
     @State private var image: UIImage?
     @State private var isUnavailable = false
     @State private var requestID: PHImageRequestID?
+    @State private var isVideo = false
+    @State private var videoDuration: TimeInterval = 0
 
     init(localIdentifier: String, contentMode: ContentMode = .fill) {
         self.localIdentifier = localIdentifier
@@ -29,6 +31,16 @@ struct AssetThumbnailView: View {
             } else {
                 ProgressView()
             }
+            if isVideo {
+                Label(formatDuration(videoDuration), systemImage: "play.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(.black.opacity(0.68), in: Capsule())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(8)
+            }
         }
         .clipped()
         .task(id: localIdentifier) {
@@ -48,6 +60,8 @@ struct AssetThumbnailView: View {
             isUnavailable = true
             return
         }
+        isVideo = asset.mediaType == .video
+        videoDuration = asset.duration
 
         let options = PHImageRequestOptions()
         options.deliveryMode = .opportunistic
@@ -71,6 +85,11 @@ struct AssetThumbnailView: View {
                 self.image = image
             }
         }
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = max(Int(duration.rounded()), 0)
+        return String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
 }
 

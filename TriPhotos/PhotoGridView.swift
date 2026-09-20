@@ -13,6 +13,8 @@ final class PhotoGridViewModel: ObservableObject {
     private let pageSize = 120
     private var nextOffset = 0
     private var hasMore = true
+    private var loadedSort: PhotoSortOption = .libraryOrder
+    private var sortedReferences: [PhotoAssetReference]?
 
     init(sourceKind: PhotoSource.Kind) {
         self.sourceKind = sourceKind
@@ -22,12 +24,14 @@ final class PhotoGridViewModel: ObservableObject {
         modelContext = context
     }
 
-    func load(referenceDate: Date? = nil, force: Bool = false) {
+    func load(referenceDate: Date? = nil, sort: PhotoSortOption = .libraryOrder, force: Bool = false) {
         guard !isLoading else { return }
-        guard force || assets.isEmpty else { return }
+        guard force || assets.isEmpty || loadedSort != sort else { return }
+        loadedSort = sort
         assets = []
         nextOffset = 0
         hasMore = true
+        sortedReferences = nil
         loadMore(referenceDate: referenceDate)
     }
 
@@ -39,6 +43,8 @@ final class PhotoGridViewModel: ObservableObject {
         let selectedSource = sourceKind
         let pageOffset = nextOffset
         let pageSize = pageSize
+        let selectedSort = loadedSort
+        let cachedSortedReferences = sortedReferences
         let excludedIdentifiers: Set<String> = {
             guard selectedSource == .untriaged, let context = modelContext else { return [] }
             let decisions = (try? context.fetch(FetchDescriptor<PhotoDecision>())) ?? []
@@ -46,12 +52,25 @@ final class PhotoGridViewModel: ObservableObject {
         }()
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let rawFetched = service.fetchReferences(
-                for: selectedSource,
-                referenceDate: referenceDate,
-                offset: pageOffset,
-                limit: pageSize
-            )
+            var sortedForCache: [PhotoAssetReference]?
+            let rawFetched: [PhotoAssetReference]
+            if selectedSort == .largestFirst {
+                let sorted = cachedSortedReferences ?? service.fetchReferences(
+                    for: selectedSource,
+                    referenceDate: referenceDate,
+                    sort: selectedSort
+                )
+                sortedForCache = cachedSortedReferences == nil ? sorted : nil
+                rawFetched = Array(sorted.dropFirst(pageOffset).prefix(pageSize))
+            } else {
+                sortedForCache = nil
+                rawFetched = service.fetchReferences(
+                    for: selectedSource,
+                    referenceDate: referenceDate,
+                    offset: pageOffset,
+                    limit: pageSize
+                )
+            }
             let reachedEnd = rawFetched.count < pageSize
             var fetched = rawFetched
             if selectedSource == .untriaged {
@@ -60,6 +79,9 @@ final class PhotoGridViewModel: ObservableObject {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.assets.append(contentsOf: fetched)
+                if let sortedForCache {
+                    self.sortedReferences = sortedForCache
+                }
                 self.nextOffset = pageOffset + pageSize
                 self.hasMore = !reachedEnd
                 self.isLoading = false
@@ -77,6 +99,7 @@ struct PhotoGridView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: PhotoGridViewModel
     @State private var selectedMonthDate = Date()
+    @State private var selectedSort: PhotoSortOption = .libraryOrder
 
     init(sourceKind: PhotoSource.Kind) {
         self.sourceKind = sourceKind
@@ -100,16 +123,39 @@ struct PhotoGridView: View {
         }
         .navigationTitle(sourceKind.title)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Picker("Trier par", selection: $selectedSort) {
+                        ForEach(PhotoSortOption.allCases) { option in
+                            Label(option.title, systemImage: option.icon).tag(option)
+                        }
+                    }
+                } label: {
+                    Image(systemName: selectedSort.icon)
+                }
+                .accessibilityLabel("Ordre de tri")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink("Trier") {
-                    SwipeTriageView(sourceKind: sourceKind, referenceDate: sourceKind == .month ? selectedMonthDate : nil)
+                    SwipeTriageView(
+                        sourceKind: sourceKind,
+                        referenceDate: sourceKind == .month ? selectedMonthDate : nil,
+                        sortOption: selectedSort
+                    )
                 }
                 .disabled(viewModel.assets.isEmpty)
             }
         }
         .task {
             viewModel.configure(context: modelContext)
-            viewModel.load(referenceDate: sourceKind == .month ? selectedMonthDate : nil)
+            viewModel.load(referenceDate: sourceKind == .month ? selectedMonthDate : nil, sort: selectedSort)
+        }
+        .onChange(of: selectedSort) { _, newSort in
+            viewModel.load(
+                referenceDate: sourceKind == .month ? selectedMonthDate : nil,
+                sort: newSort,
+                force: true
+            )
         }
         .onChange(of: selectedMonthDate) { _, newDate in
             guard sourceKind == .month else { return }

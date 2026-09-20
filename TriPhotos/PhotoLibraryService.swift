@@ -94,9 +94,23 @@ final class PhotoLibraryService: @unchecked Sendable {
         for kind: PhotoSource.Kind,
         referenceDate: Date? = nil,
         offset: Int = 0,
-        limit: Int? = nil
+        limit: Int? = nil,
+        sort: PhotoSortOption = .libraryOrder
     ) -> [PhotoAssetReference] {
         let result = fetchResult(for: kind, referenceDate: referenceDate)
+
+        if sort == .largestFirst {
+            var allReferences: [PhotoAssetReference] = []
+            allReferences.reserveCapacity(result.count)
+            result.enumerateObjects { asset, _, _ in
+                allReferences.append(PhotoAssetReference(asset: asset))
+            }
+            allReferences.sort { ($0.fileSizeBytes ?? 0) > ($1.fileSizeBytes ?? 0) }
+            let start = min(max(offset, 0), allReferences.count)
+            let end = min(start + (limit ?? allReferences.count), allReferences.count)
+            return Array(allReferences[start..<end])
+        }
+
         var references: [PhotoAssetReference] = []
         references.reserveCapacity(limit ?? result.count)
         result.enumerateObjects { asset, index, stop in
