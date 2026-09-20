@@ -13,6 +13,7 @@ final class TriageViewModel: ObservableObject {
 
     private var modelContext: ModelContext?
     private var sourceKind: PhotoSource.Kind = .all
+    private var referenceDate: Date?
     private var undoStack: [String] = []
     private let service = PhotoLibraryService()
     private let albumService = PhotoAlbumService()
@@ -27,10 +28,11 @@ final class TriageViewModel: ObservableObject {
         max(assets.count - currentIndex, 0)
     }
 
-    func configure(context: ModelContext, sourceKind: PhotoSource.Kind) {
+    func configure(context: ModelContext, sourceKind: PhotoSource.Kind, referenceDate: Date? = nil) {
         guard modelContext == nil else { return }
         modelContext = context
         self.sourceKind = sourceKind
+        self.referenceDate = referenceDate
         load()
     }
 
@@ -39,11 +41,12 @@ final class TriageViewModel: ObservableObject {
         isLoading = true
         let excludedIdentifiers = excludedIdentifiers()
         let selectedSource = sourceKind
+        let selectedDate = referenceDate
         let service = service
         print("[Tri] Chargement des photos non triées: \(selectedSource.rawValue)")
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let fetched = service.fetchReferences(for: selectedSource)
+            let fetched = service.fetchReferences(for: selectedSource, referenceDate: selectedDate)
                 .filter { !excludedIdentifiers.contains($0.localIdentifier) }
             DispatchQueue.main.async {
                 guard let self else { return }

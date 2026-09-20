@@ -27,6 +27,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: TriPhotos
         INFOPLIST_KEY_NSCameraUsageDescription: TriPhotos n’utilise pas la caméra.
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: TriPhotos a besoin d’accéder à votre photothèque pour vous aider à la trier localement.
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: TriPhotos a besoin d’autoriser les modifications nécessaires au tri local.
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true

@@ -21,16 +21,17 @@ enum PhotoLibraryAuthorization: Equatable {
 
 struct PhotoSource: Identifiable, Hashable {
     enum Kind: String, CaseIterable {
-        case all, month, screenshots, videos, livePhotos, favorites
+        case all, month, screenshots, videos, livePhotos, favorites, untriaged
 
         var title: String {
             switch self {
             case .all: return "Tout"
-            case .month: return "Ce mois-ci"
+            case .month: return "Par mois / année"
             case .screenshots: return "Captures d’écran"
             case .videos: return "Vidéos"
             case .livePhotos: return "Live Photos"
             case .favorites: return "Favoris"
+            case .untriaged: return "Jamais triées"
             }
         }
 
@@ -42,6 +43,7 @@ struct PhotoSource: Identifiable, Hashable {
             case .videos: return "video"
             case .livePhotos: return "livephoto"
             case .favorites: return "heart"
+            case .untriaged: return "sparkles"
             }
         }
     }
@@ -77,14 +79,15 @@ final class PhotoLibraryService: @unchecked Sendable {
             PhotoSource(kind: .screenshots, count: countForSmartAlbum(.smartAlbumScreenshots)),
             PhotoSource(kind: .videos, count: videosCount),
             PhotoSource(kind: .livePhotos, count: countForSmartAlbum(.smartAlbumLivePhotos)),
-            PhotoSource(kind: .favorites, count: favoritesCount)
+            PhotoSource(kind: .favorites, count: favoritesCount),
+            PhotoSource(kind: .untriaged, count: allCount)
         ]
     }
 
-    func fetchReferences(for kind: PhotoSource.Kind) -> [PhotoAssetReference] {
+    func fetchReferences(for kind: PhotoSource.Kind, referenceDate: Date? = nil) -> [PhotoAssetReference] {
         let result: PHFetchResult<PHAsset>
         switch kind {
-        case .all:
+        case .all, .untriaged:
             result = PHAsset.fetchAssets(with: .unknown, options: nil)
         case .videos:
             result = PHAsset.fetchAssets(with: .video, options: nil)
@@ -94,9 +97,10 @@ final class PhotoLibraryService: @unchecked Sendable {
             result = PHAsset.fetchAssets(with: .unknown, options: options)
         case .month:
             let calendar = Calendar.current
-            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: referenceDate ?? Date())) ?? Date()
+            let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
             let options = PHFetchOptions()
-            options.predicate = NSPredicate(format: "creationDate >= %@", start as NSDate)
+            options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
             result = PHAsset.fetchAssets(with: .unknown, options: options)
         case .screenshots:
             result = assetsInSmartAlbum(.smartAlbumScreenshots)

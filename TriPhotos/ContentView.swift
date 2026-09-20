@@ -5,6 +5,7 @@ import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel = HomeViewModel()
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationStack {
@@ -24,7 +25,10 @@ struct ContentView: View {
             }
             .navigationTitle("TriPhotos")
         }
-        .task { viewModel.load() }
+        .task {
+            viewModel.configure(context: modelContext)
+            viewModel.load()
+        }
     }
 
     private var sourceList: some View {

@@ -3,13 +3,15 @@ import SwiftData
 
 struct SwipeTriageView: View {
     let sourceKind: PhotoSource.Kind
+    let referenceDate: Date?
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: TriageViewModel
     @State private var isAlbumPickerPresented = false
     @State private var detailAsset: PhotoAssetReference?
 
-    init(sourceKind: PhotoSource.Kind) {
+    init(sourceKind: PhotoSource.Kind, referenceDate: Date? = nil) {
         self.sourceKind = sourceKind
+        self.referenceDate = referenceDate
         _viewModel = StateObject(wrappedValue: TriageViewModel())
     }
 
@@ -31,7 +33,7 @@ struct SwipeTriageView: View {
         .navigationTitle("Tri")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            viewModel.configure(context: modelContext, sourceKind: sourceKind)
+            viewModel.configure(context: modelContext, sourceKind: sourceKind, referenceDate: referenceDate)
         }
         .sheet(isPresented: $isAlbumPickerPresented) {
             AlbumPickerView(
