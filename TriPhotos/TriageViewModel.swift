@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import Photos
 import SwiftData
+import UIKit
 
 @MainActor
 final class TriageViewModel: ObservableObject {
@@ -15,6 +16,7 @@ final class TriageViewModel: ObservableObject {
     private var undoStack: [String] = []
     private let service = PhotoLibraryService()
     private let albumService = PhotoAlbumService()
+    private let imageManager = PHCachingImageManager()
 
     var currentAsset: PhotoAssetReference? {
         guard assets.indices.contains(currentIndex) else { return nil }
@@ -47,6 +49,7 @@ final class TriageViewModel: ObservableObject {
                 guard let self else { return }
                 self.assets = fetched
                 self.isLoading = false
+                self.preheatNextAssets()
                 print("[Tri] Photos disponibles: \(fetched.count)")
             }
         }
@@ -111,6 +114,8 @@ final class TriageViewModel: ObservableObject {
             undoStack.append(asset.localIdentifier)
             lastAction = action
             currentIndex += 1
+            UIImpactFeedbackGenerator(style: action == .deletePending ? .medium : .light).impactOccurred()
+            preheatNextAssets()
             print("[Tri] \(action.rawValue): \(asset.localIdentifier)")
         } catch {
             print("[Tri] Erreur de sauvegarde: \(error.localizedDescription)")
@@ -121,5 +126,19 @@ final class TriageViewModel: ObservableObject {
         guard let context = modelContext else { return [] }
         let decisions = (try? context.fetch(FetchDescriptor<PhotoDecision>())) ?? []
         return Set(decisions.map(\.localIdentifier))
+    }
+
+    private func preheatNextAssets() {
+        let next = Array(assets.dropFirst(currentIndex).prefix(3))
+        let fetched = PHAsset.fetchAssets(withLocalIdentifiers: next.map(\.localIdentifier), options: nil)
+        var assetsToCache: [PHAsset] = []
+        fetched.enumerateObjects { asset, _, _ in assetsToCache.append(asset) }
+        guard !assetsToCache.isEmpty else { return }
+        imageManager.startCachingImages(
+            for: assetsToCache,
+            targetSize: CGSize(width: 900, height: 900),
+            contentMode: .aspectFit,
+            options: nil
+        )
     }
 }

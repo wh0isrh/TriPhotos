@@ -6,6 +6,7 @@ struct SwipeTriageView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: TriageViewModel
     @State private var isAlbumPickerPresented = false
+    @State private var detailAsset: PhotoAssetReference?
 
     init(sourceKind: PhotoSource.Kind) {
         self.sourceKind = sourceKind
@@ -38,6 +39,9 @@ struct SwipeTriageView: View {
                 onFavoriteSelected: { viewModel.addCurrentToFavorites() }
             )
         }
+        .sheet(item: $detailAsset) { asset in
+            PhotoDetailView(assetReference: asset)
+        }
     }
 
     private var header: some View {
@@ -59,6 +63,9 @@ struct SwipeTriageView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .contentShape(Rectangle())
+            .onTapGesture {
+                detailAsset = asset
+            }
             .gesture(
                 DragGesture(minimumDistance: 30)
                     .onEnded { value in
