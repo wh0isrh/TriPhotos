@@ -23,6 +23,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.moncompte.triphotos
         PRODUCT_NAME: TriPhotos
         TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: TriPhotos
         INFOPLIST_KEY_NSCameraUsageDescription: TriPhotos n’utilise pas la caméra.
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: TriPhotos a besoin d’accéder à votre photothèque pour vous aider à la trier localement.
@@ -34,4 +35,3 @@ targets:
     scheme:
       gatherCoverageData: false
       testTargets: []
-
