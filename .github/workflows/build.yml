@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -44,9 +44,8 @@ jobs:
           (cd build && zip -qry TriPhotos.ipa Payload)
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: TriPhotos-ipa
           path: build/TriPhotos.ipa
           if-no-files-found: error
-
