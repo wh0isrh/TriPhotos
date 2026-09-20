@@ -81,10 +81,49 @@ final class PhotoLibraryService {
         ]
     }
 
+    func fetchReferences(for kind: PhotoSource.Kind) -> [PhotoAssetReference] {
+        let result: PHFetchResult<PHAsset>
+        switch kind {
+        case .all:
+            result = PHAsset.fetchAssets(with: .unknown, options: nil)
+        case .videos:
+            result = PHAsset.fetchAssets(with: .video, options: nil)
+        case .favorites:
+            let options = PHFetchOptions()
+            options.predicate = NSPredicate(format: "favorite == YES")
+            result = PHAsset.fetchAssets(with: .unknown, options: options)
+        case .month:
+            let calendar = Calendar.current
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+            let options = PHFetchOptions()
+            options.predicate = NSPredicate(format: "creationDate >= %@", start as NSDate)
+            result = PHAsset.fetchAssets(with: .unknown, options: options)
+        case .screenshots:
+            result = assetsInSmartAlbum(.smartAlbumScreenshots)
+        case .livePhotos:
+            result = assetsInSmartAlbum(.smartAlbumLivePhotos)
+        }
+
+        var references: [PhotoAssetReference] = []
+        references.reserveCapacity(result.count)
+        result.enumerateObjects { asset, _, _ in
+            references.append(PhotoAssetReference(asset: asset))
+        }
+        return references
+    }
+
     private func countForSmartAlbum(_ subtype: PHAssetCollectionSubtype) -> Int {
         let collections = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: nil)
         guard let collection = collections.firstObject else { return 0 }
         return PHAsset.fetchAssets(in: collection, options: nil).count
+    }
+
+    private func assetsInSmartAlbum(_ subtype: PHAssetCollectionSubtype) -> PHFetchResult<PHAsset> {
+        let collections = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: nil)
+        guard let collection = collections.firstObject else {
+            return PHAsset.fetchAssets(withLocalIdentifiers: [], options: nil)
+        }
+        return PHAsset.fetchAssets(in: collection, options: nil)
     }
 
     private func countForCurrentMonth() -> Int {

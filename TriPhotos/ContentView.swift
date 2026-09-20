@@ -1,4 +1,5 @@
 import Photos
+import SwiftData
 import SwiftUI
 import UIKit
 
@@ -44,9 +45,8 @@ struct ContentView: View {
                     ContentUnavailableView("Aucune photo accessible", systemImage: "photo.on.rectangle")
                 } else {
                     ForEach(viewModel.sources) { source in
-                        Button {
-                            viewModel.selectedSource = source.kind
-                            print("[Tri] Source choisie: \(source.kind.rawValue)")
+                        NavigationLink {
+                            PhotoGridView(sourceKind: source.kind)
                         } label: {
                             HStack(spacing: 14) {
                                 Image(systemName: source.kind.icon).frame(width: 28).foregroundStyle(.blue)
@@ -55,15 +55,15 @@ struct ContentView: View {
                                 Text(source.count.formatted()).foregroundStyle(.secondary)
                             }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
 
-            if let selectedSource = viewModel.selectedSource {
-                Section {
-                    Label("Source sélectionnée : \(selectedSource.title)", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.blue)
+            Section("Actions") {
+                NavigationLink {
+                    DeletionReviewView()
+                } label: {
+                    Label("File de suppression", systemImage: "trash")
                 }
             }
         }

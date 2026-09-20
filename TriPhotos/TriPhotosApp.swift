@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct TriPhotosApp: App {
@@ -6,6 +7,6 @@ struct TriPhotosApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: PhotoDecision.self)
     }
 }
-
