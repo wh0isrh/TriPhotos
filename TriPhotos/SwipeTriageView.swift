@@ -5,6 +5,7 @@ struct SwipeTriageView: View {
     let sourceKind: PhotoSource.Kind
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: TriageViewModel
+    @State private var isAlbumPickerPresented = false
 
     init(sourceKind: PhotoSource.Kind) {
         self.sourceKind = sourceKind
@@ -30,6 +31,12 @@ struct SwipeTriageView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.configure(context: modelContext, sourceKind: sourceKind)
+        }
+        .sheet(isPresented: $isAlbumPickerPresented) {
+            AlbumPickerView(
+                onAlbumSelected: { album in viewModel.addCurrentToAlbum(album) },
+                onFavoriteSelected: { viewModel.addCurrentToFavorites() }
+            )
         }
     }
 
@@ -59,6 +66,8 @@ struct SwipeTriageView: View {
                             viewModel.markCurrentForDeletion()
                         } else if value.translation.width > 60 {
                             viewModel.keepCurrent()
+                        } else if value.translation.height < -60 {
+                            isAlbumPickerPresented = true
                         }
                     }
             )
@@ -93,4 +102,3 @@ struct SwipeTriageView: View {
         .tint(color)
     }
 }
-

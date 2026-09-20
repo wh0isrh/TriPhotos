@@ -14,6 +14,7 @@ final class TriageViewModel: ObservableObject {
     private var sourceKind: PhotoSource.Kind = .all
     private var undoStack: [String] = []
     private let service = PhotoLibraryService()
+    private let albumService = PhotoAlbumService()
 
     var currentAsset: PhotoAssetReference? {
         guard assets.indices.contains(currentIndex) else { return nil }
@@ -57,6 +58,32 @@ final class TriageViewModel: ObservableObject {
 
     func markCurrentForDeletion() {
         apply(.deletePending)
+    }
+
+    func addCurrentToAlbum(_ album: PhotoAlbum) {
+        guard let asset = currentAsset else { return }
+        albumService.addAsset(localIdentifier: asset.localIdentifier, to: album) { [weak self] result in
+            switch result {
+            case .success:
+                print("[Tri] Photo ajoutée à l’album: \(album.title)")
+                self?.keepCurrent()
+            case .failure(let error):
+                print("[Tri] Erreur album: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func addCurrentToFavorites() {
+        guard let asset = currentAsset else { return }
+        albumService.markFavorite(localIdentifier: asset.localIdentifier) { [weak self] result in
+            switch result {
+            case .success:
+                print("[Tri] Photo ajoutée aux favoris")
+                self?.keepCurrent()
+            case .failure(let error):
+                print("[Tri] Erreur favori: \(error.localizedDescription)")
+            }
+        }
     }
 
     func undo() {
