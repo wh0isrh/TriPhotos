@@ -1,0 +1,37 @@
+name: TriPhotos
+
+options:
+  minimumXcodeGenVersion: 2.38.0
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+
+targets:
+  TriPhotos:
+    type: application
+    platform: iOS
+    sources:
+      - path: TriPhotos
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.moncompte.triphotos
+        PRODUCT_NAME: TriPhotos
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: TriPhotos
+        INFOPLIST_KEY_NSCameraUsageDescription: TriPhotos n’utilise pas la caméra.
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: TriPhotos a besoin d’accéder à votre photothèque pour vous aider à la trier localement.
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDefault
+        SWIFT_EMIT_LOC_STRINGS: true
+    scheme:
+      gatherCoverageData: false
+      testTargets: []
+
