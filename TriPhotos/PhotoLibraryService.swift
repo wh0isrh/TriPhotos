@@ -51,7 +51,7 @@ struct PhotoSource: Identifiable, Hashable {
     var id: Kind { kind }
 }
 
-final class PhotoLibraryService {
+final class PhotoLibraryService: @unchecked Sendable {
     func authorization() -> PhotoLibraryAuthorization {
         PhotoLibraryAuthorization(status: PHPhotoLibrary.authorizationStatus(for: .readWrite))
     }

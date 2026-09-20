@@ -6,7 +6,7 @@ struct PhotoAlbum: Identifiable, Hashable {
     var id: String { localIdentifier }
 }
 
-final class PhotoAlbumService {
+final class PhotoAlbumService: @unchecked Sendable {
     func albums() -> [PhotoAlbum] {
         let result = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
         var albums: [PhotoAlbum] = []
@@ -58,7 +58,8 @@ final class PhotoAlbumService {
             return
         }
         PHPhotoLibrary.shared().performChanges({
-            PHAssetChangeRequest(for: asset)?.isFavorite = true
+            let request = PHAssetChangeRequest(for: asset)
+            request.isFavorite = true
         }) { success, error in
             DispatchQueue.main.async {
                 if let error { completion(.failure(error)) }
@@ -68,4 +69,3 @@ final class PhotoAlbumService {
         }
     }
 }
-
