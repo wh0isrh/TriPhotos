@@ -64,6 +64,9 @@ final class PhotoGridViewModel: ObservableObject {
                 self.hasMore = !reachedEnd
                 self.isLoading = false
                 print("[Photos] Grille chargée: \(fetched.count) éléments")
+                if fetched.isEmpty && !reachedEnd {
+                    self.loadMore(referenceDate: referenceDate)
+                }
             }
         }
     }

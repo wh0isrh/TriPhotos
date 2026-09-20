@@ -77,6 +77,9 @@ final class TriageViewModel: ObservableObject {
                 self.isLoading = false
                 self.preheatNextAssets()
                 print("[Tri] Photos disponibles: \(fetched.count)")
+                if fetched.isEmpty && !reachedEnd {
+                    self.loadMore()
+                }
             }
         }
     }
